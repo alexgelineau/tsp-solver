@@ -2,31 +2,34 @@
 
 include config.mk
 
+BUILD_DIR ?= build
+
 SRC = import.cpp export.cpp data.cpp heuristics.cpp
-OBJ = ${SRC:.cpp=.o}
+OBJ = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRC))
 
-all: tsp-solver
+TEST_OBJ = $(OBJ) $(BUILD_DIR)/tests.o
+MAIN_OBJ = $(OBJ) $(BUILD_DIR)/tsp-solver.o
 
-# Test
+.PHONY: all clean
 
-T = ${SRC} tests.cpp
-TO = ${OBJ} tests.o
+all: $(BUILD_DIR)/tsp-solver
 
-${TO}: ${T:.cpp=.h}
+$(BUILD_DIR)/tests.o: tests.cpp $(SRC:.cpp=.h) | $(BUILD_DIR)
 
-tests: ${TO}
-	${CC} -o $@ ${TO} ${LDFLAGS}
-	./tests
+$(BUILD_DIR)/tests: $(TEST_OBJ) | $(BUILD_DIR)
+	$(CC) -o $@ $(TEST_OBJ) $(LDFLAGS)
+	./$@
 
-# Main program
+$(BUILD_DIR)/tsp-solver.o: tsp-solver.cpp $(SRC:.cpp=.h) | $(BUILD_DIR)
 
-M = ${SRC} tsp-solver.cpp
-MO = ${OBJ} tsp-solver.o
+$(BUILD_DIR)/%.o: %.cpp $(SRC:.cpp=.h) | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) -c -o $@ $<
 
-${MO}: ${SRC:.cpp=.h}
+$(BUILD_DIR)/tsp-solver: $(BUILD_DIR)/tests $(MAIN_OBJ) | $(BUILD_DIR)
+	$(CC) -o $@ $(MAIN_OBJ) $(LDFLAGS)
 
-tsp-solver: tests ${MO}
-	${CC} -o $@ ${MO} ${LDFLAGS}
+$(BUILD_DIR):
+	mkdir -p $@
 
 clean:
-	rm -f tsp-solver tests ${MO} ${TO} *.out
+	rm -rf $(BUILD_DIR)
